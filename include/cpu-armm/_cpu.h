@@ -46,6 +46,11 @@ static inline void cpu_stick_init(unsigned ticks)
 	// [2]internal-src| [1]enable-int| [0]kick-off
 }
 
+static inline unsigned cpu_stick_read()
+{
+	return readl(STICK + 0x8);
+}
+
 static inline void cpu_stick_en(unsigned on)
 {
 	reg(STICK + 0x0) = on ? 0x7 : 0x4;

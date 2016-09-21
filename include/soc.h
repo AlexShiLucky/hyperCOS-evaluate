@@ -59,6 +59,12 @@ int tmr_init_soc(unsigned *rtcs2tick, unsigned *hz);
 /// \return get the Real Time Counter value
 unsigned soc_rtcs();
 
+/// \return return the freq of high resolution ticks
+unsigned soc_hrt_init(void);
+
+/// \return return high resolution ticks
+unsigned soc_hrt(void);
+
 /// \param next_expire left ticks to the next timer event
 /// \note the implementation may set wake up time less than <next_expire>
 void tmr_tickless_soc(unsigned next_expire);

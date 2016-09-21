@@ -45,7 +45,7 @@ void _irq_init(irq_t * irqs, unsigned irq, irq_t f)
 	irq_t *o = irqs + (int)irq;
 	_assert((int)irq < CFG_IRQ_MAX);
 	*o = f;
-	if (((int)irq) > 0)
+	if (((int)irq) >= 0)
 		irq_unmask(irq);
 }
 
