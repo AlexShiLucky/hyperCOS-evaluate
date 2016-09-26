@@ -58,7 +58,7 @@ static inline void *stack_top(task_t * t)
 #endif
 
 #if CFG_FIX_VECT
-void *__isr_vector[E_INT + CFG_FIX_VECT];
+void *__isr_vector[E_INT + CFG_IRQ_MAX];
 
 irq_sta_t __irq()
 {
@@ -81,6 +81,12 @@ static irq_sta_t _halt()
 	return 0;
 }
 
+int irq_actn()
+{
+	int n = irq_act();
+	return n >= E_INT ? (n - E_INT) : IRQ_NA;
+}
+
 void **_vects;
 
 void cpu_init()
@@ -89,6 +95,8 @@ void cpu_init()
 	int i;
 	int n = nvic_irqn();
 	int sz = (E_INT + n) * sizeof(void *);
+	if (n > CFG_IRQ_MAX)
+		_fail(cpu_cur_pc(), 0, __LINE__);
 	// aligned vect
 	_vects = (void **)core_alloc(sz, CFG_VECT_ALIGN);
 	// 16-bytes aligned msp

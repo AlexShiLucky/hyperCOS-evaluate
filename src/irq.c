@@ -65,7 +65,29 @@ void irq_dest(unsigned irq)
 	_irq_dest(irqs, irq);
 }
 
+void *irq_bind_data[CFG_IRQ_MAX];
+
+void irq_bind(unsigned irq, void *data)
+{
+	irq_bind_data[irq] = data;
+}
+
+void *irq_data(void)
+{
+	int n = irq_actn();
+	if (n == IRQ_NA)
+		return 0;
+	return irq_bind_data[n];
+}
+
 #if !CFG_IRQ_VECTS
+
+static int irq_act_n;
+
+int irq_actn()
+{
+	return irq_act_n;
+}
 
 int irq_dispatch(irq_sta_t irq, reg_irq_t * reg_irq, int depth)
 {
@@ -73,6 +95,7 @@ int irq_dispatch(irq_sta_t irq, reg_irq_t * reg_irq, int depth)
 	irq_t *o;
 	if (irq == IRQ_NA)
 		return 0;
+	irq_act_n = irq;
 #if CFG_TICKLESS
 	if (tmr_rtcs)
 		tmr_tickless_end();
@@ -82,6 +105,7 @@ int irq_dispatch(irq_sta_t irq, reg_irq_t * reg_irq, int depth)
 		r = (*o) (irq, reg_irq, depth);
 	if (r != IRQ_DONE)
 		irq_eoi(irq);
+	irq_act_n = IRQ_NA;
 #if CFG_DBM
 	return irq == dbm_irq();
 #else

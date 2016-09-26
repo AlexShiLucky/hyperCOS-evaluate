@@ -43,4 +43,11 @@ void irq_init(unsigned irq, irq_t f);
 
 void irq_dest(unsigned irq);
 
+void irq_bind(unsigned irq, void *data);
+
+void *irq_data(void);
+
+/// @return the active irq number or IRQ_NA
+int irq_actn();
+
 #endif

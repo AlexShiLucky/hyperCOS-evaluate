@@ -53,7 +53,7 @@
 
 /// support OS utilization statistics
 #ifndef CFG_FIX_VECT
-#define CFG_FIX_VECT	128
+#define CFG_FIX_VECT	1
 #endif
 
 /// required aligned bits for exception vector
@@ -63,7 +63,7 @@
 
 /// max irq number
 #ifndef CFG_IRQ_MAX
-#define CFG_IRQ_MAX	64
+#define CFG_IRQ_MAX	128
 #endif
 
 /// stack size for IRQ mode
