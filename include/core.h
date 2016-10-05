@@ -58,4 +58,12 @@ extern core_ut_t core_ut;
 
 extern void (*core_abt) (void *ctx);
 
+typedef struct core_idle {
+	lle_t ll;
+	void (*notify) (struct core_idle * o);
+	void *priv;
+} core_idle_t;
+
+void core_idle_listen(core_idle_t * o);
+
 #endif

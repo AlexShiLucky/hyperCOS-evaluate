@@ -32,6 +32,8 @@ typedef struct lle {
 	struct lle *n, *p;
 } lle_t;
 
+#define LLE_INIT(le)	{&le, &le}
+
 inline static void lle_init(lle_t * le)
 {
 	le->n = le->p = le;

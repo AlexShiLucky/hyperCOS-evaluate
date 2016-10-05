@@ -38,9 +38,13 @@
 #include "cpu/cache.h"
 #include "cpu/_cpu.h"
 
+ll_t core_gc_task;
+
 unsigned core_heap;
 
 static task_t core_task_idle;
+
+static ll_t idle_listeners;
 
 #if CFG_OSUTIL
 
@@ -80,24 +84,29 @@ void core_ut_init(int _sample_ticks)
 
 #endif
 
-ll_t core_gc_task;
+static void gcf(core_idle_t * o)
+{
+	while (!ll_empty(&core_gc_task)) {
+		unsigned iflag = irq_lock();
+		task_t *gct = lle_get(ll_head(&core_gc_task), task_t, ll);
+		lle_del(&gct->ll);
+		irq_restore(iflag);
+		if (task_gc)
+			task_gc(gct);
+	}
+}
+
+static core_idle_t idle_gc = { LLE_INIT(idle_gc.ll), gcf, 0 };
 
 static void core_idle(void *priv)
 {
+	lle_t *lle;
 	sch_schedule(1);
 	for (;;) {
-#if CFG_TASK_GC
-		if (!ll_empty(&core_gc_task)) {
-			unsigned iflag = irq_lock();
-			task_t *gct =
-			    lle_get(ll_head(&core_gc_task), task_t, ll);
-			lle_del(&gct->ll);
-			irq_restore(iflag);
-			if (task_gc)
-				task_gc(gct);
-			continue;
+		ll_for_each(&idle_listeners, lle) {
+			core_idle_t *l = lle_get(lle, core_idle_t, ll);
+			l->notify(l);
 		}
-#endif
 #if CFG_TICKLESS
 		soc_idle(tmr_tickless());
 #else
@@ -130,6 +139,10 @@ void core_init()
 		  _alloc(CFG_IDLE_STACK), CFG_IDLE_STACK, 10, 0);
 	tmr_init_sys();
 	ll_init(&core_gc_task);
+	ll_init(&idle_listeners);
+#if CFG_TASK_GC
+	core_idle_listen(&idle_gc);
+#endif
 }
 
 void core_start()
@@ -138,4 +151,9 @@ void core_start()
 	_task_cur = &core_task_idle;
 	_task_cur->sch = soc_rtcs();
 	task_load(&core_task_idle);
+}
+
+void core_idle_listen(core_idle_t * o)
+{
+	ll_addt(&idle_listeners, &o->ll);
 }
