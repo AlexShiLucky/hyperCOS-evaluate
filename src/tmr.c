@@ -37,7 +37,7 @@
 #include <string.h>
 
 #define TMR_MQ_SZ       (8*sizeof(unsigned))
-#define TMR_ENTS		(1<<CFG_TMR_BITS)
+#define TMR_ENTS	(1<<CFG_TMR_BITS)
 
 ll_t tmrs[TMR_ENTS];
 
@@ -69,16 +69,18 @@ static inline void _tmr_insert(tmr_t * t, unsigned expire)
 	ll_addt(tmrs + ti, &t->ll);
 }
 
-void tmr_on(tmr_t * t, unsigned expire)
+void _tmr_on(tmr_t * t, unsigned expire, unsigned irq_mode)
 {
 	unsigned iflag;
 	iflag = irq_lock();
 	_tmr_insert(t, expire);
+	t->irq_mode = irq_mode;
 	irq_restore(iflag);
 }
 
 static void __tmr_tickf(void)
 {
+	lle_t *p, *tmp;
 	unsigned cur, iflag;
 	irq_dep_chk(irq_depth > 0);
 
@@ -91,6 +93,20 @@ static void __tmr_tickf(void)
 	tmr_ticks++;
 
 	cur = tmr_ticks & BI_TMSK(CFG_TMR_BITS);
+
+	ll_for_each_mod(&tmrs[cur], p, tmp) {
+		tmr_t *t = lle_get(p, tmr_t, ll);
+		int exp;
+		if (!t->irq_mode)
+			continue;
+		exp = t->expire - tmr_ticks;
+		if (exp <= 0) {
+			exp = t->f(t->p);
+			lle_del(&t->ll);
+			if (exp != 0)
+				_tmr_insert(t, exp);
+		}
+	}
 	if (!ll_empty(&tmrs[cur])) {
 		mq_put(&tmr_mq, &cur, WAIT_NO);
 	}
@@ -110,8 +126,10 @@ static void _tmr_process_slot(int slot)
 	lle_t *p, *tmp;
 	ll_for_each_mod(&tmrs[slot], p, tmp) {
 		tmr_t *t = lle_get(p, tmr_t, ll);
-
-		int exp = t->expire - tmr_ticks;
+		int exp;
+		if (t->irq_mode)
+			continue;
+		exp = t->expire - tmr_ticks;
 		if (exp <= 0) {
 			exp = t->f(t->p);
 			lle_del(&t->ll);

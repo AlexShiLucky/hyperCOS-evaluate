@@ -37,6 +37,7 @@ typedef struct {
 	tmr_do f;
 	void *p;
 	unsigned expire;
+	unsigned irq_mode;
 } tmr_t;
 
 /// total ticks since boot up
@@ -50,7 +51,17 @@ extern unsigned tmr_rtcs2tick;
 
 tmr_t *tmr_init(tmr_t * t, void *p, tmr_do f);
 
-void tmr_on(tmr_t * t, unsigned expire);
+void _tmr_on(tmr_t * t, unsigned expire, unsigned irq_mode);
+
+static inline void tmr_on(tmr_t * t, unsigned expire)
+{
+	_tmr_on(t, expire, 0);
+}
+
+static inline void tmr_on_irq(tmr_t * t, unsigned expire)
+{
+	_tmr_on(t, expire, 1);
+}
 
 static inline void _tmr_of(tmr_t * t)
 {
