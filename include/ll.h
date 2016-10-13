@@ -69,6 +69,8 @@ typedef struct ll {
 	lle_t *n, *p;
 } ll_t;
 
+#define LL_INIT(le)	{(void*)&le, (void*)&le}
+
 #define ll_dec(_l)	ll_t _l = {(void*)&_l, (void*)&_l};
 
 #define ll_for_each(_ll, _lle)		\
