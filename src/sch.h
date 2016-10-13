@@ -27,6 +27,10 @@
 #ifndef SCH150904
 #define SCH150904
 
+struct task;
+
+extern void (*sch_wake_notify) (struct task * t);
+
 void sch_schedule(unsigned hint);
 
 /// wake up thread, possible trigger an immediate context switch if t's

@@ -28,6 +28,8 @@
 #include "task.h"
 #include "io.h"
 
+void (*sch_wake_notify) (struct task * t);
+
 static ll_t task_ready[CFG_TPRI_NUM];
 
 #if CFG_SCH_PQ == 1
@@ -183,6 +185,9 @@ void sch_wake(task_t * t)
 			_task_switch_pend(t);
 		else
 			_task_switch_sync(t, _task_switch_status(t));
+	} else {
+		if (sch_wake_notify)
+			sch_wake_notify(t);
 	}
 }
 
