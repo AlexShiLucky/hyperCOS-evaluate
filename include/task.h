@@ -34,6 +34,7 @@
 #include "core.h"
 #include "irq.h"
 #include "dbg.h"
+#include "load.h"
 #include "cpu/reg.h"
 #include "cpu/_cpu.h"
 
@@ -59,8 +60,7 @@ typedef struct task {
 	char status;		///< task_status_t
 	char tm_out;
 	short pri;		///< initial thread priority
-	unsigned sch;
-	unsigned ut;
+	load_t load;
 } task_t;
 
 extern void (*task_gc) (task_t * t);
@@ -75,6 +75,16 @@ task_t *task_init(task_t * t,
 
 #define task_new(_n,_e,_p,_sz,_sl,_pr) \
 	task_init(_alloc(sizeof(task_t)), _n, _e, _p, _alloc(_sz), _sz, _sl, _pr)
+
+static inline void task_set_idle(task_t * t)
+{
+	t->load.wei = 0;
+}
+
+static inline int task_is_idle(task_t * t)
+{
+	return t->load.wei == 0;
+}
 
 void _task_dest();
 
@@ -132,5 +142,27 @@ reg_t **_task_switch_status(task_t * tn);
 extern void (*task_ov) (task_t * t);
 
 #include "cpu/_task.h"
+
+struct task_switch;
+
+typedef struct task_switch task_switch_t;
+
+typedef void (*task_switch_f) (struct task_switch * o, struct task * tn);
+
+struct task_switch {
+	lle_t ll;
+	task_switch_f notify;
+	void *priv;
+};
+
+static inline void task_switch_init(task_switch_t * o, task_switch_f notify,
+				    void *priv)
+{
+	lle_init(&o->ll);
+	o->notify = notify;
+	o->priv = priv;
+}
+
+void task_switch_listen(task_switch_t * o);
 
 #endif

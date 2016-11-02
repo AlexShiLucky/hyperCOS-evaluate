@@ -30,6 +30,7 @@
 #include "sch.h"
 #include "dbg.h"
 #include "soc.h"
+#include "core.h"
 #include "cpu/_cpu.h"
 #include <string.h>
 
@@ -38,6 +39,8 @@ reg_t *_cpu_task_init(struct task *t, void *priv, void *dest);
 task_t *_task_cur, *_task_pend;
 
 void (*task_gc) (task_t * t);
+
+static ll_t switch_listeners = LL_INIT(switch_listeners);
 
 static int task_wait_timeout(void *p)
 {
@@ -48,6 +51,7 @@ static int task_wait_timeout(void *p)
 		lle_del(&t->ll);
 		sch_wake(t);
 	}
+	t->load.wei = 1;
 	irq_restore(iflag);
 	return 0;
 }
@@ -185,15 +189,16 @@ void task_pri(task_t * t, short pri)
 
 reg_t **_task_switch_status(task_t * tn)
 {
-	unsigned now;
+	lle_t *lle;
 	task_t *t = _task_cur;
 	if (_task_cur->status == TASK_READY)
 		sch_add(_task_cur);
 	sch_del(tn);
 
-	now = soc_rtcs();
-	_task_cur->ut += now - _task_cur->sch;
-	tn->sch = now;
+	ll_for_each(&switch_listeners, lle) {
+		task_switch_t *l = lle_get(lle, task_switch_t, ll);
+		l->notify(l, tn);
+	}
 
 	_task_cur = tn;
 	_task_cur->slice_cur = _task_cur->slice;
@@ -207,4 +212,9 @@ void _task_switch_pend(task_t * tn)
 		_task_pend = tn;
 		cpu_req_switch();
 	}
+}
+
+void task_switch_listen(task_switch_t * o)
+{
+	ll_addt(&switch_listeners, &o->ll);
 }
