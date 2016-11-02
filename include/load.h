@@ -23,41 +23,34 @@
 /*-             socware.help@gmail.com                                        */
 /*-                                                                           */
 /*-****************************************************************************/
+#ifndef LOAD0930
+#define LOAD0930
 
-#ifndef HTOS
-#define HTOS
+#include "clk.h"
+#include <string.h>
 
-#include "cfg.h"
-#include "ll.h"
-#include "cpu/reg.h"
-#include "cpu/_irq.h"
+typedef struct {
+	unsigned ts;		///< lastest scheduled time stamp
+	unsigned sum;
+	unsigned wei;		///< weight, idle task shall be 0
+} load_t;
 
-extern ll_t core_gc_task;
+typedef void (*load_tune_f) (unsigned load, unsigned load_full);
 
-/// mandatory initialize before any APIs could be used
-void core_init(void);
+/// @param load_ticking_scale, set 1 to sync every 32ticks, set 2 to sync every
+/// 64 ticks and so on.
+void load_init(clk_t * cpu_clk, int load_ticking_scale, load_tune_f tune);
 
-/// start the OS
-/// \note this function does not return
-void core_start(void);
+void load_dvfs(unsigned load, unsigned load_full);
 
-/// allocate memory block from the start heap
-/// \param sz
-/// \param align_bits number of bits the required memory should align to
-void *core_alloc(unsigned sz, int align_bits);
+typedef struct {
+	unsigned idle, all;
+	unsigned ut_sta;
+	int sample_ticks;
+} load_ut_t;
 
-#define _alloc(_sz)      core_alloc(_sz, 3)
+void load_ut_init(int sample_ticks);
 
-struct task *core_idle();
-
-extern void (*core_abt) (void *ctx);
-
-typedef struct core_idle {
-	lle_t ll;
-	void (*notify) (struct core_idle * o);
-	void *priv;
-} core_idle_t;
-
-void core_idle_listen(core_idle_t * o);
+extern load_ut_t load_ut;
 
 #endif

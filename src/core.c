@@ -23,7 +23,7 @@
 /*-             socware.help@gmail.com                                        */
 /*-                                                                           */
 /*-****************************************************************************/
-
+#include "cfg.h"
 #include "core.h"
 #include "soc.h"
 #include "tmr.h"
@@ -42,71 +42,24 @@ ll_t core_gc_task;
 
 unsigned core_heap;
 
+//SMP: cpudata
 static task_t core_task_idle;
 
-static ll_t idle_listeners;
-
-#if CFG_OSUTIL
-
-static unsigned idles[1<<CFG_OSUTIL], iidle;
-
-static unsigned ut_sta;
-
-static tmr_t ut_tmr;
-
-static int sample_ticks;
-
-core_ut_t core_ut = { idles, sizeof(idles) / sizeof(unsigned), 0, 0 };
-
-static int ut_tick(void *p)
+static void _idle(void *priv)
 {
-	unsigned now, iflag;
-	iflag = irq_lock();
-	now = soc_rtcs();
-	core_ut.idles[iidle] = core_task_idle.ut;
-	core_task_idle.ut = 0;
-	core_ut.idle = (core_ut.idle >> 1) + core_ut.idles[iidle];
-	core_ut.all = (core_ut.all >> 1) + (now - ut_sta);
-	ut_sta = now;
-	irq_restore(iflag);
-	iidle = (iidle + 1) & ((1<<CFG_OSUTIL)-1);
-	core_ut.idles[iidle] = 0;
-	return sample_ticks;
-}
-
-void core_ut_init(int _sample_ticks)
-{
-	ut_sta = soc_rtcs();
-	sample_ticks = _sample_ticks;
-	tmr_init(&ut_tmr, 0, ut_tick);
-	tmr_on(&ut_tmr, _sample_ticks);
-}
-
-#endif
-
-static void gcf(core_idle_t * o)
-{
-	while (!ll_empty(&core_gc_task)) {
-		unsigned iflag = irq_lock();
-		task_t *gct = lle_get(ll_head(&core_gc_task), task_t, ll);
-		lle_del(&gct->ll);
-		irq_restore(iflag);
-		if (task_gc)
-			task_gc(gct);
-	}
-}
-
-static core_idle_t idle_gc = { LLE_INIT(idle_gc.ll), gcf, 0 };
-
-static void core_idle(void *priv)
-{
-	lle_t *lle;
 	sch_schedule(1);
 	for (;;) {
-		ll_for_each(&idle_listeners, lle) {
-			core_idle_t *l = lle_get(lle, core_idle_t, ll);
-			l->notify(l);
+#if CFG_TASK_GC
+		while (!ll_empty(&core_gc_task)) {
+			unsigned iflag = irq_lock();
+			task_t *gct =
+			    lle_get(ll_head(&core_gc_task), task_t, ll);
+			lle_del(&gct->ll);
+			irq_restore(iflag);
+			if (task_gc)
+				task_gc(gct);
 		}
+#endif
 #if CFG_TICKLESS
 		soc_idle(tmr_tickless());
 #else
@@ -132,28 +85,28 @@ void core_init()
 	cpu_init();
 	soc_init();
 	sch_init();
-	task_init(&core_task_idle,
-		  "idle",
-		  core_idle,
-		  CFG_TPRI_NUM - 1,
-		  _alloc(CFG_IDLE_STACK), CFG_IDLE_STACK, 10, 0);
 	tmr_init_sys();
 	ll_init(&core_gc_task);
-	ll_init(&idle_listeners);
-#if CFG_TASK_GC
-	core_idle_listen(&idle_gc);
-#endif
+
+	//SMP: per-cpu init
+	task_init(&core_task_idle,
+		  "idle",
+		  _idle,
+		  CFG_TPRI_NUM - 1,
+		  _alloc(CFG_IDLE_STACK), CFG_IDLE_STACK, 10, 0);
+	task_set_idle(&core_task_idle);
 }
 
 void core_start()
 {
 	lle_del(&core_task_idle.ll);
 	_task_cur = &core_task_idle;
-	_task_cur->sch = soc_rtcs();
+	_task_cur->load.ts = soc_rtcs();
+	//SMP: bootup
 	task_load(&core_task_idle);
 }
 
-void core_idle_listen(core_idle_t * o)
+struct task *core_idle()
 {
-	ll_addt(&idle_listeners, &o->ll);
+	return &core_task_idle;
 }
