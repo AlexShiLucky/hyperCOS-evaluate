@@ -43,6 +43,8 @@ sem_t *sem_init(sem_t * s, int init_val);
 int sem_get(sem_t * s, wait_t w);
 
 /// \note support irq context
-void sem_post(sem_t * s);
+int sem_post_n(sem_t * s, int n);
+
+int sem_post(sem_t * s);
 
 #endif

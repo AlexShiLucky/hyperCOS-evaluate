@@ -75,6 +75,11 @@ static inline void tmr_of(tmr_t * t)
 	irq_restore(iflag);
 }
 
+static inline int tmr_active(tmr_t * t)
+{
+    return t->ll.n != t->ll.p;
+}
+
 irq_handler_decl(_tmr_tickf);
 
 #endif

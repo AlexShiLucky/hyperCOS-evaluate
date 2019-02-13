@@ -52,7 +52,7 @@ sem_get:
 	.asm_fun sem_post
 sem_post:
 	ldrex  r2, [r0, #sem_val]
-	add    r2, r2, #1
+	add    r2, r2, r1
 	strex  r3, r2, [r0]
 	cmp    r3, #0
 	bne    sem_post

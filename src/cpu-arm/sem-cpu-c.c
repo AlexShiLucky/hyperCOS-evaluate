@@ -46,7 +46,7 @@ int sem_get(sem_t * s, wait_t w)
 	return sem_get_wait(s, w, iflag);
 }
 
-void sem_post(sem_t * s)
+int sem_post(sem_t * s)
 {
 	unsigned iflag = irq_lock();
 	s->val++;
@@ -56,4 +56,5 @@ void sem_post(sem_t * s)
 	} else {
 		irq_restore(iflag);
 	}
+	return 0;
 }

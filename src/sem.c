@@ -55,3 +55,8 @@ void sem_post_wake(sem_t * s)
 {
 	task_wakeq(&s->wait);
 }
+
+int sem_post(sem_t * s)
+{
+    return sem_post_n(s, 1);
+}
